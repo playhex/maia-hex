@@ -128,7 +128,7 @@ export class Maia {
                 p[i] = v === mover ? 1 : 0;
                 p[N + i] = v >= 0 && v !== mover ? 1 : 0;
                 p[2 * N + i] = 1;
-                p[3 * N + i] = swapLegal ? 1 : 0;
+                p[3 * N + i] = ctx.swapAllowed ? 1 : 0; // swap rule, whole game
                 p[4 * N + i] = map[i] === last ? 1 : 0;
                 p[5 * N + i] = mover;
                 legal[b * A + i] = v < 0 ? 1 : 0;

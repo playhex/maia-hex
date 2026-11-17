@@ -445,9 +445,17 @@ async function newGame() {
     $('banner').textContent = '';
     renderLog();
 
+    await buildBoard([]);
+    startTurn();
+}
+
+/**
+ * (Re)creates the board view with given moves already played.
+ */
+async function buildBoard(moves) {
     if (gameView) gameView.destroy();
     gameView = new GameView(maia.size, { displayCoords: checked('show-coords') });
-    facade = new PlayingGameFacade(gameView, game.swapAllowed);
+    facade = new PlayingGameFacade(gameView, game.swapAllowed, moves);
     overlay = new PolicyOverlayFacade(gameView);
     comparePreds = null;
     mixMarks = [];
@@ -458,8 +466,25 @@ async function newGame() {
     }
     gameView.on('hexClicked', onHexClicked);
     await gameView.mount($('board'));
+}
 
-    startTurn();
+/**
+ * Swap rule changed: applies to the current game.
+ * Model input changes at every move. Before move 2, swap legality changes too, so the board is rebuilt.
+ */
+async function onSwapRuleChanged() {
+    if (!game) return;
+    game.swapAllowed = checked('swap-allowed');
+    const moves = facade.getMoves();
+
+    if (moves.length <= 1) {
+        cancelPending();
+        turnToken++;
+        await buildBoard(moves);
+    }
+
+    if (!gameOver) startTurn();
+    else repredict();
 }
 
 function undo() {
@@ -580,6 +605,7 @@ function wire() {
     $('show-coords').addEventListener('input', () => gameView?.setDisplayCoords(checked('show-coords')));
     $('model-plays').addEventListener('input', () => { updateRatingBlocks(); startTurn(); });
     $('new-game').addEventListener('click', newGame);
+    $('swap-allowed').addEventListener('input', onSwapRuleChanged);
     $('undo').addEventListener('click', undo);
     $('pause').addEventListener('click', togglePause);
     $('play-model').addEventListener('click', () => {

@@ -7,7 +7,7 @@
     "stones of the player to move (1/0)",
     "stones of the opponent (1/0)",
     "all ones (lets convolutions see board edges)",
-    "swap legal: all ones if ply == 1 and swap rule enabled, else zeros",
+    "swap rule: all ones if the swap rule is enabled for this game (at every move), else zeros",
     "last move: 1 on the last placed stone (canonical coords; swapped stone after a swap; none after a pass or at ply 0)",
     "color of the player to move: all zeros for red, all ones for blue"
   ],
