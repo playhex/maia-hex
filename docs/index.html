@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Maia Hex</title>
+    <link rel="icon" href="data:,">
+    <style>
+        :root {
+            --bg: #16181d;
+            --panel: #1f232b;
+            --border: #333944;
+            --text: #e6e8ec;
+            --muted: #9aa3b2;
+            --red: #ee3333;
+            --blue: #3388ee;
+            --accent: #6cc070;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font: 14px/1.4 system-ui, sans-serif;
+        }
+        header {
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+            align-items: baseline;
+            flex-wrap: wrap;
+        }
+        header h1 { font-size: 18px; margin: 0; }
+        #status { color: var(--muted); }
+        main {
+            display: grid;
+            grid-template-columns: 280px minmax(0, 1fr) 300px;
+            gap: 12px;
+            padding: 12px 16px;
+        }
+        @media (max-width: 1100px) {
+            main { grid-template-columns: 1fr; }
+        }
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+        }
+        .panel h2 {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: var(--muted);
+            margin: 14px 0 6px;
+        }
+        .panel h2:first-child { margin-top: 0; }
+        label { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+        label.row { justify-content: space-between; }
+        input[type=number] { width: 80px; }
+        input[type=range] { flex: 1; }
+        input, select, button {
+            background: #2a2f39;
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 3px 6px;
+            font: inherit;
+        }
+        button { cursor: pointer; padding: 6px 10px; }
+        button:hover { border-color: var(--muted); }
+        button.primary { background: #2d4a30; border-color: var(--accent); }
+        .buttons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .seg { display: flex; gap: 0; margin: 4px 0; }
+        .seg label { margin: 0; }
+        .seg input { display: none; }
+        .seg span {
+            border: 1px solid var(--border);
+            padding: 3px 9px;
+            cursor: pointer;
+            background: #2a2f39;
+        }
+        .seg label:first-child span { border-radius: 4px 0 0 4px; }
+        .seg label:last-child span { border-radius: 0 4px 4px 0; }
+        .seg input:checked + span { background: #3a4a5e; border-color: var(--blue); }
+        .presets { margin-top: 6px; display: grid; grid-template-columns: repeat(4, 1fr); }
+        .presets label { display: block; margin: 0; }
+        .presets span { display: block; text-align: center; padding: 3px 2px; font-size: 12px; }
+        .rating-range { width: 100%; }
+        .rating-value { font-variant-numeric: tabular-nums; font-weight: 600; }
+        #compare th { color: var(--muted); font-weight: normal; text-align: left; padding: 2px 4px; }
+        #compare td { font-size: 13px; }
+        #compare td .p { color: var(--muted); font-size: 11px; }
+        #compare th.current, #compare td.current { background: #2a3442; }
+        #board-wrap { display: flex; flex-direction: column; gap: 8px; }
+        #board { width: 100%; height: min(70vh, 640px); }
+        .clocks { display: flex; gap: 8px; }
+        .clock {
+            flex: 1;
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 2px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            font-variant-numeric: tabular-nums;
+        }
+        .clock.red { border-left: 6px solid var(--red); }
+        .clock.blue { border-left: 6px solid var(--blue); }
+        .clock.active { border-color: var(--accent); }
+        .clock .time { font-size: 20px; font-weight: 600; }
+        .clock .who { color: var(--muted); align-self: center; }
+        #banner {
+            min-height: 24px;
+            font-weight: 600;
+            text-align: center;
+        }
+        .bar {
+            height: 10px;
+            background: var(--blue);
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 4px 0 2px;
+        }
+        .bar > div { height: 100%; background: var(--red); transition: width .3s; }
+        table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+        td { padding: 2px 4px; }
+        td.num { text-align: right; }
+        .muted { color: var(--muted); }
+        #log { max-height: 260px; overflow-y: auto; }
+        #log td:first-child { color: var(--muted); }
+        .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; }
+        .dot.r { background: var(--red); }
+        .dot.b { background: var(--blue); }
+        #model-file { display: none; }
+        .hint { margin: 4px 0; font-size: 12px; }
+        details { margin-top: 14px; }
+        summary {
+            cursor: pointer;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: var(--muted);
+        }
+        [hidden] { display: none !important; }
+        .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; margin-top: 4px; }
+        .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+    </style>
+  <script type="module" crossorigin src="./assets/index-DHJCGWIU.js"></script>
+</head>
+<body>
+<header>
+    <h1>Maia Hex</h1>
+    <span id="status">Loading model…</span>
+    <label id="model-file"><span>Load an .onnx file:</span><input type="file" accept=".onnx"></label>
+</header>
+
+<main>
+    <section class="panel" id="settings">
+        <h2>Game</h2>
+        <label class="row">Model plays
+            <select id="model-plays">
+                <option value="1">Blue</option>
+                <option value="0">Red</option>
+                <option value="both">Both sides</option>
+                <option value="none">Nobody (analysis)</option>
+            </select>
+        </label>
+
+        <div id="model-rating-block">
+            <label class="row"><span id="model-rating-label">Model rating</span><span id="rating-model" class="rating-value">1600</span></label>
+            <input type="range" id="rating-model-range" class="rating-range" min="1150" max="2000" step="50" value="1600">
+            <div class="seg presets">
+                <label><input type="radio" name="preset" value="1150"><span>Newcomer</span></label>
+                <label><input type="radio" name="preset" value="1300"><span>Weak</span></label>
+                <label><input type="radio" name="preset" value="1600" checked><span>Average</span></label>
+                <label><input type="radio" name="preset" value="1900"><span>Strong</span></label>
+            </div>
+        </div>
+        <div id="both-ratings-block">
+            <label class="row"><span><span class="dot r"></span>Red rating</span><span id="rating-0" class="rating-value">1500</span></label>
+            <input type="range" id="rating-0-range" class="rating-range" min="1150" max="2000" step="50" value="1500">
+            <label class="row"><span><span class="dot b"></span>Blue rating</span><span id="rating-1" class="rating-value">1800</span></label>
+            <input type="range" id="rating-1-range" class="rating-range" min="1150" max="2000" step="50" value="1800">
+        </div>
+
+        <p class="muted hint">How the model plays, and what the analysis shows. From 1200 to 2000, where the model has enough data. Far left: newcomer (unrated player).</p>
+
+        <h2>Model moves</h2>
+        <label class="row">Temperature<span id="temperature-value">1.00</span></label>
+        <input type="range" id="temperature" min="0" max="2" step="0.05" value="1" style="width:100%">
+        <p class="muted hint">1: plays like a human of that rating. Lower: sticks to the most likely moves, 0: always the most likely move. Higher: more erratic.</p>
+        <label><input type="checkbox" id="allow-resign" checked> Model can resign</label>
+
+        <h2>Think time</h2>
+        <div class="seg" id="speed">
+            <label><input type="radio" name="speed" value="1"><span>Normal</span></label>
+            <label><input type="radio" name="speed" value="2"><span>×2</span></label>
+            <label><input type="radio" name="speed" value="5"><span>×5</span></label>
+            <label><input type="radio" name="speed" value="0" checked><span>Instant</span></label>
+        </div>
+        <p class="muted hint">The model waits for its sampled think time, divided by the speed. The clock is always charged with the sampled time.</p>
+
+        <h2>Next game options</h2>
+        <label><input type="checkbox" id="use-clock" checked> Clock (Fischer)</label>
+        <label class="row">Initial time (min)<input type="number" id="initial" value="10" min="0.5" step="0.5"></label>
+        <label class="row">Increment (s)<input type="number" id="increment" value="5" min="0" step="1"></label>
+        <label><input type="checkbox" id="swap-allowed" checked> Swap allowed</label>
+
+        <details>
+            <summary>Advanced</summary>
+            <p class="muted hint">Context the model was trained with. Changes how it plays and how long it thinks.</p>
+            <label class="row" title="Glicko-2 deviation: low = established rating">Rating deviation<input type="number" id="deviation" value="70" min="30" max="350" step="10"></label>
+            <p class="muted hint">Low: established rating, high: uncertain rating (new player).</p>
+            <label><input type="checkbox" id="ranked" checked> Ranked game</label>
+            <label><input type="checkbox" id="vs-ai"> Against an AI</label>
+            <p class="muted hint">Plays like a human facing a PlayHex bot (usually faster and more casual). Keep unchecked to play like against a human.</p>
+        </details>
+
+        <div class="buttons">
+            <button class="primary" id="new-game">New game</button>
+        </div>
+    </section>
+
+    <section id="board-wrap">
+        <div class="clocks">
+            <div class="clock red" id="clock-0"><span class="who" id="who-0">Red</span><span class="time">–</span></div>
+            <div class="clock blue" id="clock-1"><span class="who" id="who-1">Blue</span><span class="time">–</span></div>
+        </div>
+        <div id="board"></div>
+        <div id="banner"></div>
+        <div class="buttons">
+            <button id="play-model">Let the model play</button>
+            <button id="pause">Pause</button>
+            <button id="undo">Undo</button>
+            <button id="resign">Resign</button>
+        </div>
+    </section>
+
+    <section class="panel" id="analysis">
+        <h2>Display</h2>
+        <label><input type="checkbox" id="show-policy" checked> Policy overlay</label>
+        <div class="seg">
+            <label><input type="radio" name="overlay-mode" value="single" checked><span>Single rating</span></label>
+            <label><input type="radio" name="overlay-mode" value="mix"><span>Mix of levels</span></label>
+        </div>
+        <div id="mix-legend" class="hint" hidden>
+            <div class="legend">
+                <span><i style="background:#00ff00"></i>Weak (1300)</span>
+                <span><i style="background:#3366ff"></i>Average (1600)</span>
+                <span><i style="background:#ff0000"></i>Strong (1900)</span>
+                <span><i style="background:#ffffff"></i>All levels</span>
+                <span><i style="background:#ff00ff"></i>Average + strong</span>
+                <span><i style="background:#00ffff"></i>Weak + average</span>
+                <span><i style="background:#ffff00"></i>Weak + strong</span>
+            </div>
+            <p class="muted" style="margin:4px 0 0">Each level's favorite move is at full intensity. Brighter = more likely.</p>
+        </div>
+        <label><input type="checkbox" id="show-numbers"> Percentages on board</label>
+        <label><input type="checkbox" id="show-best"> Star on most likely move</label>
+        <label><input type="checkbox" id="show-coords"> Coordinates</label>
+        <label><input type="checkbox" id="hide-for-human"> Hide analysis on my turn</label>
+        <h2>Prediction for <span id="pred-who">–</span></h2>
+        <div class="muted">Win probability (according to the model)</div>
+        <div class="bar"><div id="win-bar" style="width:50%"></div></div>
+        <div class="muted" style="display:flex;justify-content:space-between"><span id="win-red">–</span><span id="win-blue">–</span></div>
+        <table style="margin-top:8px">
+            <tr><td>Median think time</td><td class="num" id="think-median">–</td></tr>
+            <tr><td>80% range</td><td class="num" id="think-range">–</td></tr>
+            <tr><td>Resign</td><td class="num" id="p-resign">–</td></tr>
+            <tr><td>Swap</td><td class="num" id="p-swap">–</td></tr>
+        </table>
+
+        <h2>Most likely moves</h2>
+        <table id="top-moves"></table>
+
+        <h2>Most likely moves by rating</h2>
+        <table id="compare"></table>
+
+        <h2>History</h2>
+        <div id="log"><table><tbody id="log-body"></tbody></table></div>
+    </section>
+</main>
+
+</body>
+</html>
