@@ -146,7 +146,7 @@
         .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; margin-top: 4px; }
         .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
     </style>
-  <script type="module" crossorigin src="./assets/index-D4mdvaft.js"></script>
+  <script type="module" crossorigin src="./assets/index-Co89IFTQ.js"></script>
 </head>
 <body>
 <header>
@@ -191,6 +191,9 @@
         <label class="row">Temperature<span id="temperature-value">1.00</span></label>
         <input type="range" id="temperature" min="0" max="2" step="0.05" value="1" style="width:100%">
         <p class="muted hint">1: plays like a human of that rating. Lower: sticks to the most likely moves, 0: always the most likely move. Higher: more erratic.</p>
+        <label class="row">Search<span id="playouts-value" class="rating-value">–</span></label>
+        <input type="range" id="max-playouts" min="0" max="256" step="8" value="64" style="width:100%">
+        <p class="muted hint">Playouts before each model move, at rating 2000: halved every 150 points below, fewer for quick moves, none for newcomers. 0: off.</p>
         <label><input type="checkbox" id="allow-resign" checked> Model can resign</label>
 
         <h2>Think time</h2>

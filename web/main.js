@@ -1,6 +1,7 @@
 import { BoardEntity, GameView, Hex, PlayingGameFacade, PolicyOverlayFacade } from '@playhex/pixi-board';
 import { Graphics } from 'pixi.js';
 import { Maia } from './maia.js';
+import { pickFromVisits, playoutsFor, search } from './search.js';
 
 const $ = id => document.getElementById(id);
 const PLAYER_NAMES = ['Red', 'Blue'];
@@ -223,10 +224,39 @@ function chooseModelMove(pred) {
     return maia.sample(p, temperature);
 }
 
-function scheduleModelMove(pred, token, plan = null) {
-    const move = plan?.move ?? chooseModelMove(pred);
-    let think = plan?.think ?? maia.sampleThink(pred);
+const maxPlayouts = () => Number($('max-playouts').value);
+
+/** Shows playouts at 2000 and for the current model rating (at median think time) */
+function renderPlayouts() {
+    const max = maxPlayouts();
+    if (max === 0) {
+        $('playouts-value').textContent = 'off';
+        return;
+    }
+    const rating = $('model-plays').value === 'both' ? null : readRating('model');
+    const current = rating === null || rating === 2000 ? '' : ` · ${playoutsFor(rating, 1, 1, max)} at ${ratingLabel(rating)}`;
+    $('playouts-value').textContent = `${max} at 2000${current}`;
+}
+
+async function scheduleModelMove(pred, token, plan = null) {
     const p = mover();
+    let think = plan?.think ?? maia.sampleThink(pred);
+    let move = plan?.move ?? null;
+    let playouts = plan?.playouts ?? 0;
+
+    if (!move) {
+        move = chooseModelMove(pred);
+
+        // Search, unless resigning: more playouts for strong ratings and long thinks
+        if (move !== 'resign') {
+            playouts = playoutsFor(playRating(p), think, Math.exp(pred.thinkMu), maxPlayouts());
+            if (playouts > 0) {
+                const results = await search(maia, facade.getMoves(), q => context(q, playRating(q)), playouts, pred);
+                if (token !== turnToken || paused || pending) return;
+                move = pickFromVisits(results, Number($('temperature').value));
+            }
+        }
+    }
 
     // Model would lose on time: think until flag
     if (game.useClock && think >= clocks[p]) {
@@ -240,18 +270,19 @@ function scheduleModelMove(pred, token, plan = null) {
 
     if (s === 0) {
         // Instant: clock still charged with the sampled think time
-        pending = { move, think, timer: setTimeout(() => token === turnToken && playModelMove(move, think), 0) };
+        pending = { move, think, playouts, timer: setTimeout(() => token === turnToken && playModelMove(move, think, playouts), 0) };
         return;
     }
 
     pending = {
         move,
         think,
-        timer: setTimeout(() => token === turnToken && playModelMove(move, think), remaining / s * 1000),
+        playouts,
+        timer: setTimeout(() => token === turnToken && playModelMove(move, think, playouts), remaining / s * 1000),
     };
 }
 
-function playModelMove(move, think) {
+function playModelMove(move, think, playouts = 0) {
     pending = null;
     const p = mover();
     if (game.useClock && think >= clocks[p]) {
@@ -259,20 +290,20 @@ function playModelMove(move, think) {
         endGame(1 - p, 'on time');
         return;
     }
-    applyMove(move, think, lastPlayPred);
+    applyMove(move, think, lastPlayPred, playouts);
 }
 
 /**
  * @param pred prediction the move is logged against (its probability is shown in history)
  */
-function applyMove(move, think, pred = lastPred) {
+function applyMove(move, think, pred = lastPred, playouts = 0) {
     const p = mover();
     const prob = !pred ? null
         : move === 'swap-pieces' ? pred.swap
         : move === 'resign' ? pred.resign
         : pred.cells[maia.parseMove(move)];
 
-    history.push({ player: p, move, think, prob, clocksBefore: [...clocks] });
+    history.push({ player: p, move, think, prob, playouts, clocksBefore: [...clocks] });
 
     if (move === 'resign') {
         turnSpent = think;
@@ -419,6 +450,7 @@ function renderLog() {
         <td>${i + 1}.</td>
         <td><span class="dot ${h.player === 0 ? 'r' : 'b'}"></span>${moveLabel(h.move)}</td>
         <td class="num">${fmtDuration(h.think)}</td>
+        <td class="num muted" title="Search playouts">${h.playouts ? `${h.playouts} po` : ''}</td>
         <td class="num muted" title="Probability the model gave to this move">${h.prob === null ? '' : pct(h.prob)}</td>
     </tr>`).join('');
     $('log').scrollTop = $('log').scrollHeight;
@@ -510,7 +542,7 @@ function togglePause() {
     if (!paused) {
         turnSpent = spentNow();
         paused = true;
-        pausedPlan = pending && { move: pending.move, think: pending.think };
+        pausedPlan = pending && { move: pending.move, think: pending.think, playouts: pending.playouts };
         cancelPending();
         $('pause').textContent = 'Resume';
         return;
@@ -606,6 +638,10 @@ function wire() {
     $('model-plays').addEventListener('input', () => { updateRatingBlocks(); startTurn(); });
     $('new-game').addEventListener('click', newGame);
     $('swap-allowed').addEventListener('input', onSwapRuleChanged);
+    for (const el of [$('max-playouts'), $('rating-model-range'), $('model-plays'), ...document.querySelectorAll('input[name=preset]')]) {
+        el.addEventListener('input', renderPlayouts);
+    }
+    renderPlayouts();
     $('undo').addEventListener('click', undo);
     $('pause').addEventListener('click', togglePause);
     $('play-model').addEventListener('click', () => {
