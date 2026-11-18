@@ -233,6 +233,26 @@ function chooseModelMove(pred) {
 
 const maxPlayouts = () => Number($('max-playouts').value);
 
+/**
+ * Clock management: past this share of the remaining clock, a human stops thinking and hurries to play.
+ * Hurrying takes a random reaction time (log-normal): with a few seconds left, it can be too late.
+ */
+const HURRY_SHARE = 0.5;
+const HURRY_TIME = { thinkMu: Math.log(1.5), thinkSigma: 0.5 };
+
+/**
+ * Think time for player p: the predicted human time, cut short when it would burn too much clock.
+ * Flags only when a long think (hard position) meets a short clock: P(flag) = P(think > c/2) * P(reaction >= c/2).
+ */
+function sampleThink(pred, p) {
+    const think = maia.sampleThink(pred);
+    if (!game.useClock) return think;
+
+    const budget = clocks[p] * HURRY_SHARE;
+
+    return think <= budget ? think : budget + maia.sampleThink(HURRY_TIME);
+}
+
 /** Shows playouts at 2000 and for the current model rating (at median think time) */
 function renderPlayouts() {
     const max = maxPlayouts();
@@ -247,7 +267,7 @@ function renderPlayouts() {
 
 async function scheduleModelMove(pred, token, plan = null) {
     const p = mover();
-    let think = plan?.think ?? maia.sampleThink(pred);
+    let think = plan?.think ?? sampleThink(pred, p);
     let move = plan?.move ?? null;
     let playouts = plan?.playouts ?? 0;
 
