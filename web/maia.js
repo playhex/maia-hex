@@ -8,12 +8,26 @@ import * as ort from 'onnxruntime-web/wasm';
 export const SWAP = -1;
 export const PASS = -2;
 
+/** Inference blocks the main thread: give the browser a turn at least this often (ms) */
+const YIELD_EVERY = 30;
+
 export class Maia {
     constructor(session, size = 11) {
         this.session = session;
         this.size = size;
         this.n = size * size;
         this.T = Array.from({ length: this.n }, (_, i) => (i % size) * size + Math.floor(i / size));
+        this.lastYield = performance.now();
+    }
+
+    /**
+     * Lets the browser handle events and timers when inference has been running for a while,
+     * so the page stays responsive during long computations (search).
+     */
+    async yieldIfBusy() {
+        if (performance.now() - this.lastYield < YIELD_EVERY) return;
+        await new Promise(resolve => setTimeout(resolve, 0));
+        this.lastYield = performance.now();
     }
 
     static async load(url, size = 11) {
@@ -101,6 +115,8 @@ export class Maia {
      *        rating null = unknown player, clock null = unknown clock (in seconds)
      */
     async predict(moves, ctx) {
+        await this.yieldIfBusy();
+
         const N = this.n, S = this.size, A = N + 2;
         const ply = moves.length;
         const mover = ply % 2;

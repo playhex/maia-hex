@@ -183,6 +183,9 @@ setInterval(renderClocks, 100);
 
 // ---------- game flow ----------
 
+/** Resolves once the browser has painted a frame */
+const nextPaint = () => new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
+
 function cancelPending() {
     if (pending) clearTimeout(pending.timer);
     pending = null;
@@ -196,6 +199,10 @@ async function startTurn() {
     turnRate = 1;
 
     if (gameOver) return;
+
+    // Inference runs on the main thread: let the board render the last move first
+    await nextPaint();
+    if (token !== turnToken) return;
 
     comparePreds = null; // previous position, would draw on occupied cells
     const p = mover();
